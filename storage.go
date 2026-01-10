@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"path/filepath"
 )
 
 func newStore() *Store {
@@ -33,13 +34,28 @@ func loadStore(path string) (*Store, error) {
 }
 
 func saveStore(path string, store *Store) error {
-	file, err := os.Create(path)
+	dir := filepath.Dir(path)
+	tempFile, err := os.CreateTemp(dir, "data-*.json")
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	tempFileName := tempFile.Name()
+	defer func() {
+		_ = os.Remove(tempFileName)
+	}()
 
-	encoder := json.NewEncoder(file)
+	encoder := json.NewEncoder(tempFile)
 	encoder.SetIndent("", "  ")
-	return encoder.Encode(store)
+	if err := encoder.Encode(store); err != nil {
+		_ = tempFile.Close()
+		return err
+	}
+	if err := tempFile.Sync(); err != nil {
+		_ = tempFile.Close()
+		return err
+	}
+	if err := tempFile.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tempFileName, path)
 }
