@@ -20,7 +20,12 @@ type productForm struct {
 	stock   *widget.Entry
 }
 
-func ProductsTab(db *sql.DB) fyne.CanvasObject {
+type ProductsView struct {
+	Tab     *container.TabItem
+	Refresh func()
+}
+
+func NewProductsTab(db *sql.DB) *ProductsView {
 	var products []store.Product
 	selectedIndex := -1
 
@@ -160,10 +165,14 @@ func ProductsTab(db *sql.DB) fyne.CanvasObject {
 
 	refresh(list)
 
-	return container.NewBorder(nil, footer, nil, nil,
+	content := container.NewBorder(nil, footer, nil, nil,
 		container.NewHSplit(
 			container.NewBorder(nil, nil, nil, nil, list),
 			container.NewVBox(controls, layout.NewSpacer()),
 		),
 	)
+	return &ProductsView{
+		Tab:     container.NewTabItem("Products", content),
+		Refresh: func() { refresh(list) },
+	}
 }

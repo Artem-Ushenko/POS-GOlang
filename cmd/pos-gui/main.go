@@ -30,6 +30,7 @@ func main() {
 
 	scanner := ui.NewScannerService()
 	salesView := ui.NewSalesTab(db, window)
+	productsView := ui.NewProductsTab(db)
 	salesActive := false
 	scanner.OnScan(func(barcode string) {
 		if !salesActive {
@@ -42,13 +43,17 @@ func main() {
 
 	tabs := container.NewAppTabs(
 		container.NewTabItem("Customers", ui.CustomersTab(db)),
-		container.NewTabItem("Products", ui.ProductsTab(db)),
+		productsView.Tab,
 		salesView.Tab,
 	)
 	tabs.OnSelected = func(item *container.TabItem) {
 		salesActive = item == salesView.Tab
 	}
 	salesActive = tabs.Selected() == salesView.Tab
+
+	salesView.OnSaleCreated = func() {
+		productsView.Refresh()
+	}
 
 	window.SetContent(container.NewMax(tabs, scanner.Widget()))
 	window.Resize(fyne.NewSize(900, 600))

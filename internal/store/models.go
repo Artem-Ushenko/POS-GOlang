@@ -14,3 +14,8 @@ type Product struct {
 	Price   float64
 	Stock   int64
 }
+
+type SaleItem struct {
+	ProductID int64
+	Quantity  int64
+}
