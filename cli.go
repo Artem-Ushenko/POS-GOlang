@@ -57,13 +57,19 @@ func manageCustomers(reader *bufio.Reader, store *Store) {
 			listCustomers(store)
 		case 2:
 			addCustomer(reader, store)
-			saveStore(dataFile, store)
+			if err := saveStore(dataFile, store); err != nil {
+				fmt.Printf("Failed to save data: %v\n", err)
+			}
 		case 3:
 			editCustomer(reader, store)
-			saveStore(dataFile, store)
+			if err := saveStore(dataFile, store); err != nil {
+				fmt.Printf("Failed to save data: %v\n", err)
+			}
 		case 4:
 			removeCustomer(reader, store)
-			saveStore(dataFile, store)
+			if err := saveStore(dataFile, store); err != nil {
+				fmt.Printf("Failed to save data: %v\n", err)
+			}
 		case 0:
 			return
 		default:
@@ -86,13 +92,19 @@ func manageProducts(reader *bufio.Reader, store *Store) {
 			listProducts(store)
 		case 2:
 			addProduct(reader, store)
-			saveStore(dataFile, store)
+			if err := saveStore(dataFile, store); err != nil {
+				fmt.Printf("Failed to save data: %v\n", err)
+			}
 		case 3:
 			editProduct(reader, store)
-			saveStore(dataFile, store)
+			if err := saveStore(dataFile, store); err != nil {
+				fmt.Printf("Failed to save data: %v\n", err)
+			}
 		case 4:
 			removeProduct(reader, store)
-			saveStore(dataFile, store)
+			if err := saveStore(dataFile, store); err != nil {
+				fmt.Printf("Failed to save data: %v\n", err)
+			}
 		case 0:
 			return
 		default:
@@ -115,13 +127,19 @@ func manageSales(reader *bufio.Reader, store *Store) {
 			listSales(store)
 		case 2:
 			addSale(reader, store)
-			saveStore(dataFile, store)
+			if err := saveStore(dataFile, store); err != nil {
+				fmt.Printf("Failed to save data: %v\n", err)
+			}
 		case 3:
 			editSale(reader, store)
-			saveStore(dataFile, store)
+			if err := saveStore(dataFile, store); err != nil {
+				fmt.Printf("Failed to save data: %v\n", err)
+			}
 		case 4:
 			removeSale(reader, store)
-			saveStore(dataFile, store)
+			if err := saveStore(dataFile, store); err != nil {
+				fmt.Printf("Failed to save data: %v\n", err)
+			}
 		case 0:
 			return
 		default:
