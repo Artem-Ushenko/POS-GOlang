@@ -14,9 +14,10 @@ import (
 )
 
 type productForm struct {
-	name  *widget.Entry
-	price *widget.Entry
-	stock *widget.Entry
+	name    *widget.Entry
+	barcode *widget.Entry
+	price   *widget.Entry
+	stock   *widget.Entry
 }
 
 func ProductsTab(db *sql.DB) fyne.CanvasObject {
@@ -24,9 +25,10 @@ func ProductsTab(db *sql.DB) fyne.CanvasObject {
 	selectedIndex := -1
 
 	form := productForm{
-		name:  widget.NewEntry(),
-		price: widget.NewEntry(),
-		stock: widget.NewEntry(),
+		name:    widget.NewEntry(),
+		barcode: widget.NewEntry(),
+		price:   widget.NewEntry(),
+		stock:   widget.NewEntry(),
 	}
 
 	refresh := func(list *widget.List) {
@@ -38,6 +40,7 @@ func ProductsTab(db *sql.DB) fyne.CanvasObject {
 		products = items
 		selectedIndex = -1
 		form.name.SetText("")
+		form.barcode.SetText("")
 		form.price.SetText("")
 		form.stock.SetText("")
 		list.Refresh()
@@ -53,6 +56,18 @@ func ProductsTab(db *sql.DB) fyne.CanvasObject {
 	)
 
 	addButton := widget.NewButton("Add", func() {
+		barcode := form.barcode.Text
+		if barcode != "" {
+			existing, err := store.GetProductByBarcode(db, barcode)
+			if err == nil && existing.ID != 0 {
+				fmt.Println("Barcode already exists.")
+				return
+			}
+			if err != nil && err != sql.ErrNoRows {
+				fmt.Println("Failed to validate barcode:", err)
+				return
+			}
+		}
 		price, err := strconv.ParseFloat(form.price.Text, 64)
 		if err != nil {
 			return
@@ -62,9 +77,10 @@ func ProductsTab(db *sql.DB) fyne.CanvasObject {
 			return
 		}
 		_, err = store.CreateProduct(db, store.Product{
-			Name:  form.name.Text,
-			Price: price,
-			Stock: stock,
+			Name:    form.name.Text,
+			Barcode: barcode,
+			Price:   price,
+			Stock:   stock,
 		})
 		if err != nil {
 			fmt.Println("Failed to create product:", err)
@@ -77,6 +93,18 @@ func ProductsTab(db *sql.DB) fyne.CanvasObject {
 		if selectedIndex < 0 || selectedIndex >= len(products) {
 			return
 		}
+		barcode := form.barcode.Text
+		if barcode != "" {
+			existing, err := store.GetProductByBarcode(db, barcode)
+			if err == nil && existing.ID != 0 && existing.ID != products[selectedIndex].ID {
+				fmt.Println("Barcode already exists.")
+				return
+			}
+			if err != nil && err != sql.ErrNoRows {
+				fmt.Println("Failed to validate barcode:", err)
+				return
+			}
+		}
 		price, err := strconv.ParseFloat(form.price.Text, 64)
 		if err != nil {
 			return
@@ -87,6 +115,7 @@ func ProductsTab(db *sql.DB) fyne.CanvasObject {
 		}
 		product := products[selectedIndex]
 		product.Name = form.name.Text
+		product.Barcode = barcode
 		product.Price = price
 		product.Stock = stock
 		if err := store.UpdateProduct(db, product); err != nil {
@@ -109,6 +138,7 @@ func ProductsTab(db *sql.DB) fyne.CanvasObject {
 
 	formItems := []*widget.FormItem{
 		{Text: "Name", Widget: form.name},
+		{Text: "Barcode", Widget: form.barcode},
 		{Text: "Price", Widget: form.price},
 		{Text: "Stock", Widget: form.stock},
 	}
@@ -122,6 +152,7 @@ func ProductsTab(db *sql.DB) fyne.CanvasObject {
 		selectedIndex = id
 		product := products[id]
 		form.name.SetText(product.Name)
+		form.barcode.SetText(product.Barcode)
 		form.price.SetText(fmt.Sprintf("%.2f", product.Price))
 		form.stock.SetText(strconv.FormatInt(product.Stock, 10))
 		footer.SetText("Selected ID: " + strconv.FormatInt(product.ID, 10))
