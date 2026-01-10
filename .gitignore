@@ -1,5 +1,0 @@
-pos.db
-*.db
-*.db-wal
-*.db-shm
-backups/
