@@ -7,7 +7,10 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/widget"
 
+	"pos-system/internal/backup"
 	"pos-system/internal/store"
 	"pos-system/internal/ui"
 )
@@ -27,6 +30,13 @@ func main() {
 
 	gui := app.New()
 	window := gui.NewWindow("POS System")
+	window.SetOnClosed(func() {
+		go func() {
+			if _, err := backup.BackupDatabase("pos.db", "backups"); err != nil {
+				fmt.Println("Auto-backup failed:", err)
+			}
+		}()
+	})
 
 	scanner := ui.NewScannerService()
 	salesView := ui.NewSalesTab(db, window)
@@ -55,7 +65,19 @@ func main() {
 		productsView.Refresh()
 	}
 
-	window.SetContent(container.NewMax(tabs, scanner.Widget()))
+	backupButton := widget.NewButton("Backup Now", func() {
+		go func() {
+			path, err := backup.BackupDatabase("pos.db", "backups")
+			if err != nil {
+				dialog.NewError(err, window).Show()
+				return
+			}
+			dialog.NewInformation("Backup Complete", "Backup saved to "+path, window).Show()
+		}()
+	})
+
+	content := container.NewBorder(backupButton, nil, nil, nil, tabs)
+	window.SetContent(container.NewMax(content, scanner.Widget()))
 	window.Resize(fyne.NewSize(900, 600))
 	window.ShowAndRun()
 }
