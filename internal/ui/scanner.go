@@ -12,7 +12,6 @@ type ScannerService struct {
 	entry    *widget.Entry
 	onScan   func(string)
 	mu       sync.RWMutex
-	paused   bool
 	stopOnce sync.Once
 	stopCh   chan struct{}
 }
@@ -60,12 +59,6 @@ func (s *ScannerService) Start(window fyne.Window) {
 		for {
 			select {
 			case <-ticker.C:
-				s.mu.RLock()
-				paused := s.paused
-				s.mu.RUnlock()
-				if paused {
-					continue
-				}
 				if canvas.Focused() != s.entry {
 					canvas.Focus(s.entry)
 				}
@@ -80,10 +73,4 @@ func (s *ScannerService) Stop() {
 	s.stopOnce.Do(func() {
 		close(s.stopCh)
 	})
-}
-
-func (s *ScannerService) SetPaused(paused bool) {
-	s.mu.Lock()
-	s.paused = paused
-	s.mu.Unlock()
 }

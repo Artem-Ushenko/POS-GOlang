@@ -42,10 +42,15 @@ func main() {
 	checkoutView := ui.NewCheckoutTab(db, window, scanner)
 	salesView := ui.NewSalesTab(db, window)
 	productsView := ui.NewProductsTab(db)
+	salesActive := false
 	checkoutActive := false
 	scanner.OnScan(func(barcode string) {
 		if checkoutActive {
 			checkoutView.HandleScan(barcode)
+			return
+		}
+		if salesActive {
+			salesView.HandleScan(barcode)
 		}
 	})
 	scanner.Start(window)
@@ -58,9 +63,11 @@ func main() {
 		salesView.Tab,
 	)
 	tabs.OnSelected = func(item *container.TabItem) {
+		salesActive = item == salesView.Tab
 		checkoutActive = item == checkoutView.Tab
 		checkoutView.SetActive(checkoutActive)
 	}
+	salesActive = tabs.Selected() == salesView.Tab
 	checkoutActive = tabs.Selected() == checkoutView.Tab
 	checkoutView.SetActive(checkoutActive)
 
