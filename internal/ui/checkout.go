@@ -3,14 +3,11 @@ package ui
 import (
 	"database/sql"
 	"fmt"
-	"strings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
-
-	"pos-system/internal/store"
 )
 
 type CheckoutView struct {
@@ -21,7 +18,6 @@ type CheckoutView struct {
 	cartLines  []*CartLine
 	totalLabel *widget.Label
 	receipt    *widget.List
-	status     *widget.Label
 }
 
 type CartLine struct {
@@ -34,6 +30,8 @@ type CartLine struct {
 }
 
 func NewCheckoutTab(db *sql.DB, window fyne.Window, scanner *ScannerService) *CheckoutView {
+	_ = db
+	_ = window
 	_ = scanner
 
 	view := &CheckoutView{
@@ -109,38 +107,14 @@ func NewCheckoutTab(db *sql.DB, window fyne.Window, scanner *ScannerService) *Ch
 	leftPane := container.NewBorder(nil, view.totalLabel, nil, nil, view.receipt)
 	searchPlaceholder := widget.NewLabel("Scan or search products here.")
 	resultsPlaceholder := widget.NewLabel("Search results will appear here.")
-	view.status = widget.NewLabel("Ready to scan.")
-	rightPane := container.NewVBox(searchPlaceholder, resultsPlaceholder, view.status, addTestButton, layout.NewSpacer())
+	rightPane := container.NewVBox(searchPlaceholder, resultsPlaceholder, addTestButton, layout.NewSpacer())
 
 	content := container.NewHSplit(leftPane, rightPane)
 	content.SetOffset(0.55)
 
 	view.Tab = container.NewTabItem("Checkout", content)
 	view.HandleScan = func(barcode string) {
-		trimmed := strings.TrimSpace(barcode)
-		if trimmed == "" {
-			return
-		}
-		product, err := store.GetProductByBarcode(db, trimmed)
-		if err == sql.ErrNoRows {
-			view.setStatus("Unknown barcode: " + trimmed)
-			return
-		}
-		if err != nil {
-			view.setStatus(fmt.Sprintf("Lookup failed: %v", err))
-			return
-		}
-
-		line := &CartLine{
-			ProductID: int(product.ID),
-			Name:      product.Name,
-			Barcode:   product.Barcode,
-			UnitPrice: product.Price,
-			Qty:       1,
-			Stock:     int(product.Stock),
-		}
-		view.addOrIncrement(line)
-		view.setStatus("Added " + product.Name)
+		_ = barcode
 	}
 
 	return view
@@ -192,11 +166,5 @@ func (c *CheckoutView) refreshReceiptUI() {
 	}
 	if c.receipt != nil {
 		c.receipt.Refresh()
-	}
-}
-
-func (c *CheckoutView) setStatus(message string) {
-	if c.status != nil {
-		c.status.SetText(message)
 	}
 }
