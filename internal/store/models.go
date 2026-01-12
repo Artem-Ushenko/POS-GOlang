@@ -8,12 +8,11 @@ type Customer struct {
 }
 
 type Product struct {
-	ID            int64
-	Name          string
-	Barcode       string
-	Quantity      int64
-	PurchasePrice float64
-	Price         float64
+	ID      int64
+	Name    string
+	Barcode string
+	Price   float64
+	Stock   int64
 }
 
 type SaleItem struct {

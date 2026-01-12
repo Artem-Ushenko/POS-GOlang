@@ -14,11 +14,10 @@ import (
 )
 
 type productForm struct {
-	name          *widget.Entry
-	barcode       *widget.Entry
-	purchasePrice *widget.Entry
-	price         *widget.Entry
-	quantity      *widget.Entry
+	name    *widget.Entry
+	barcode *widget.Entry
+	price   *widget.Entry
+	stock   *widget.Entry
 }
 
 type ProductsView struct {
@@ -31,11 +30,10 @@ func NewProductsTab(db *sql.DB) *ProductsView {
 	selectedIndex := -1
 
 	form := productForm{
-		name:          widget.NewEntry(),
-		barcode:       widget.NewEntry(),
-		purchasePrice: widget.NewEntry(),
-		price:         widget.NewEntry(),
-		quantity:      widget.NewEntry(),
+		name:    widget.NewEntry(),
+		barcode: widget.NewEntry(),
+		price:   widget.NewEntry(),
+		stock:   widget.NewEntry(),
 	}
 
 	refresh := func(list *widget.List) {
@@ -48,9 +46,8 @@ func NewProductsTab(db *sql.DB) *ProductsView {
 		selectedIndex = -1
 		form.name.SetText("")
 		form.barcode.SetText("")
-		form.purchasePrice.SetText("")
 		form.price.SetText("")
-		form.quantity.SetText("")
+		form.stock.SetText("")
 		list.Refresh()
 	}
 
@@ -80,20 +77,15 @@ func NewProductsTab(db *sql.DB) *ProductsView {
 		if err != nil {
 			return
 		}
-		purchasePrice, err := strconv.ParseFloat(form.purchasePrice.Text, 64)
-		if err != nil {
-			return
-		}
-		quantity, err := strconv.ParseInt(form.quantity.Text, 10, 64)
+		stock, err := strconv.ParseInt(form.stock.Text, 10, 64)
 		if err != nil {
 			return
 		}
 		_, err = store.CreateProduct(db, store.Product{
-			Name:          form.name.Text,
-			Barcode:       barcode,
-			Quantity:      quantity,
-			PurchasePrice: purchasePrice,
-			Price:         price,
+			Name:    form.name.Text,
+			Barcode: barcode,
+			Price:   price,
+			Stock:   stock,
 		})
 		if err != nil {
 			fmt.Println("Failed to create product:", err)
@@ -122,20 +114,15 @@ func NewProductsTab(db *sql.DB) *ProductsView {
 		if err != nil {
 			return
 		}
-		purchasePrice, err := strconv.ParseFloat(form.purchasePrice.Text, 64)
-		if err != nil {
-			return
-		}
-		quantity, err := strconv.ParseInt(form.quantity.Text, 10, 64)
+		stock, err := strconv.ParseInt(form.stock.Text, 10, 64)
 		if err != nil {
 			return
 		}
 		product := products[selectedIndex]
 		product.Name = form.name.Text
 		product.Barcode = barcode
-		product.PurchasePrice = purchasePrice
 		product.Price = price
-		product.Quantity = quantity
+		product.Stock = stock
 		if err := store.UpdateProduct(db, product); err != nil {
 			fmt.Println("Failed to update product:", err)
 			return
@@ -157,9 +144,8 @@ func NewProductsTab(db *sql.DB) *ProductsView {
 	formItems := []*widget.FormItem{
 		{Text: "Name", Widget: form.name},
 		{Text: "Barcode", Widget: form.barcode},
-		{Text: "Purchase Price", Widget: form.purchasePrice},
 		{Text: "Price", Widget: form.price},
-		{Text: "Quantity", Widget: form.quantity},
+		{Text: "Stock", Widget: form.stock},
 	}
 	formWidget := widget.NewForm(formItems...)
 
@@ -172,9 +158,8 @@ func NewProductsTab(db *sql.DB) *ProductsView {
 		product := products[id]
 		form.name.SetText(product.Name)
 		form.barcode.SetText(product.Barcode)
-		form.purchasePrice.SetText(fmt.Sprintf("%.2f", product.PurchasePrice))
 		form.price.SetText(fmt.Sprintf("%.2f", product.Price))
-		form.quantity.SetText(strconv.FormatInt(product.Quantity, 10))
+		form.stock.SetText(strconv.FormatInt(product.Stock, 10))
 		footer.SetText("Selected ID: " + strconv.FormatInt(product.ID, 10))
 	}
 

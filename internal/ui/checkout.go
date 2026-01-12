@@ -3,14 +3,11 @@ package ui
 import (
 	"database/sql"
 	"fmt"
-	"strings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
-
-	"pos-system/internal/store"
 )
 
 type CheckoutView struct {
@@ -21,10 +18,6 @@ type CheckoutView struct {
 	cartLines  []*CartLine
 	totalLabel *widget.Label
 	receipt    *widget.List
-	status     *widget.Label
-	results    []store.Product
-	resultsUI  *widget.List
-	search     *widget.Entry
 }
 
 type CartLine struct {
@@ -37,6 +30,9 @@ type CartLine struct {
 }
 
 func NewCheckoutTab(db *sql.DB, window fyne.Window, scanner *ScannerService) *CheckoutView {
+	_ = db
+	_ = window
+	_ = scanner
 
 	view := &CheckoutView{
 		cartByCode: make(map[string]*CartLine),
@@ -78,20 +74,19 @@ func NewCheckoutTab(db *sql.DB, window fyne.Window, scanner *ScannerService) *Ch
 			total.SetText(fmt.Sprintf("Line: %.2f", line.UnitPrice*float64(line.Qty)))
 
 			add.OnTapped = func() {
-				view.withUI(func() {
-					view.applyQuantity(line, line.Qty+1)
-				})
+				if line.Qty < line.Stock {
+					line.Qty++
+					view.refreshReceiptUI()
+				}
 			}
 			subtract.OnTapped = func() {
-				view.withUI(func() {
-					view.applyQuantity(line, line.Qty-1)
-				})
+				if line.Qty > 1 {
+					line.Qty--
+					view.refreshReceiptUI()
+				}
 			}
 			remove.OnTapped = func() {
-				view.withUI(func() {
-					view.removeLine(line.Barcode)
-					view.setStatus("Removed " + line.Name)
-				})
+				view.removeLine(line.Barcode)
 			}
 		},
 	)
@@ -99,174 +94,22 @@ func NewCheckoutTab(db *sql.DB, window fyne.Window, scanner *ScannerService) *Ch
 	view.totalLabel = widget.NewLabel("Total: 0.00")
 
 	leftPane := container.NewBorder(nil, view.totalLabel, nil, nil, view.receipt)
-	view.status = widget.NewLabel("Ready to scan.")
 
-	searchEntry := widget.NewEntry()
-	searchEntry.SetPlaceHolder("Search by name or barcode")
-	view.search = searchEntry
+	searchPlaceholder := widget.NewLabel("Scan or search products here.")
+	resultsPlaceholder := widget.NewLabel("Search results will appear here.")
 
-	searchMode := widget.NewCheck("Search mode (pause scanner focus)", func(checked bool) {
-		scanner.SetFocusLockEnabled(!checked)
-		view.withUI(func() {
-			if checked {
-				window.Canvas().Focus(searchEntry)
-			} else {
-				window.Canvas().Focus(scanner.Widget())
-			}
-		})
-	})
-
-	view.resultsUI = widget.NewList(
-		func() int { return len(view.results) },
-		func() fyne.CanvasObject {
-			name := widget.NewLabel("")
-			meta := widget.NewLabel("")
-			add := widget.NewButton("Add", nil)
-			text := container.NewVBox(name, meta)
-			return container.NewBorder(nil, nil, nil, add, text)
-		},
-		func(id widget.ListItemID, item fyne.CanvasObject) {
-			product := view.results[id]
-			border := item.(*fyne.Container)
-			add := border.Objects[1].(*widget.Button)
-			text := border.Objects[0].(*fyne.Container)
-			name := text.Objects[0].(*widget.Label)
-			meta := text.Objects[1].(*widget.Label)
-
-			name.SetText(product.Name)
-			meta.SetText(fmt.Sprintf("Barcode: %s | Price: %.2f | Stock: %d", product.Barcode, product.Price, product.Quantity))
-			add.OnTapped = func() {
-				view.withUI(func() {
-					line := &CartLine{
-						ProductID: int(product.ID),
-						Name:      product.Name,
-						Barcode:   product.Barcode,
-						UnitPrice: product.Price,
-						Qty:       1,
-						Stock:     int(product.Quantity),
-					}
-					view.addOrIncrement(line)
-					searchEntry.SetText("")
-					focusInput()
-				})
-			}
-		},
+	rightPane := container.NewVBox(
+		searchPlaceholder,
+		resultsPlaceholder,
+		layout.NewSpacer(),
 	)
-
-	focusInput := func() {
-		window.Canvas().Focus(searchEntry)
-	}
-
-	searchExact := func(barcode string) (store.Product, bool, error) {
-		var product store.Product
-		err := db.QueryRow(
-			`SELECT name, barcode, price, quantity FROM products WHERE barcode = ? LIMIT 1`,
-			barcode,
-		).Scan(&product.Name, &product.Barcode, &product.Price, &product.Quantity)
-		if err == sql.ErrNoRows {
-			return store.Product{}, false, nil
-		}
-		if err != nil {
-			return store.Product{}, false, err
-		}
-		return product, true, nil
-	}
-
-	searchResults := func(query string) ([]store.Product, error) {
-		likeQuery := "%" + query + "%"
-		rows, err := db.Query(
-			`SELECT name, barcode, price, quantity FROM products WHERE (name LIKE ? OR barcode LIKE ?) AND quantity > 0 ORDER BY name LIMIT ?`,
-			likeQuery,
-			likeQuery,
-			50,
-		)
-		if err != nil {
-			return nil, err
-		}
-		defer rows.Close()
-
-		var results []store.Product
-		for rows.Next() {
-			var product store.Product
-			if err := rows.Scan(&product.Name, &product.Barcode, &product.Price, &product.Quantity); err != nil {
-				return nil, err
-			}
-			results = append(results, product)
-		}
-		if err := rows.Err(); err != nil {
-			return nil, err
-		}
-		return results, nil
-	}
-
-	handleInput := func(value string) {
-		query := strings.TrimSpace(value)
-		if query == "" {
-			return
-		}
-
-		go func() {
-			product, found, err := searchExact(query)
-			if err != nil {
-				view.withUI(func() {
-					view.setStatus(fmt.Sprintf("Lookup failed: %v", err))
-				})
-				return
-			}
-			if found {
-				view.withUI(func() {
-					line := &CartLine{
-						Name:      product.Name,
-						Barcode:   product.Barcode,
-						UnitPrice: product.Price,
-						Qty:       1,
-						Stock:     int(product.Quantity),
-					}
-					view.addOrIncrement(line)
-					searchEntry.SetText("")
-					focusInput()
-				})
-				return
-			}
-
-			results, err := searchResults(query)
-			view.withUI(func() {
-				if err != nil {
-					view.setStatus(fmt.Sprintf("Search failed: %v", err))
-					return
-				}
-				view.results = results
-				view.resultsUI.Refresh()
-				if len(results) == 0 {
-					view.setStatus("No matches for: " + query)
-				}
-				focusInput()
-			})
-		}()
-	}
-
-	searchEntry.OnSubmitted = func(value string) {
-		handleInput(value)
-	}
-	searchEntry.OnChanged = func(value string) {
-		if strings.TrimSpace(value) == "" {
-			view.results = nil
-			view.resultsUI.Refresh()
-			view.setStatus("Ready to scan.")
-		}
-	}
-
-	rightPane := container.NewVBox(searchEntry, searchMode, view.resultsUI, view.status, layout.NewSpacer())
 
 	content := container.NewHSplit(leftPane, rightPane)
 	content.SetOffset(0.55)
 
 	view.Tab = container.NewTabItem("Checkout", content)
 	view.HandleScan = func(barcode string) {
-		if !view.active {
-			return
-		}
-		handleInput(barcode)
+		_ = barcode
 	}
 
 	return view
@@ -278,16 +121,14 @@ func (c *CheckoutView) SetActive(active bool) {
 
 func (c *CheckoutView) addOrIncrement(line *CartLine) {
 	if existing, ok := c.cartByCode[line.Barcode]; ok {
-		c.applyQuantity(existing, existing.Qty+1)
-		return
-	}
-	if line.Stock == 0 {
-		c.setStatus("Out of stock: " + line.Name)
+		if existing.Qty < existing.Stock {
+			existing.Qty++
+		}
+		c.refreshReceiptUI()
 		return
 	}
 	c.cartByCode[line.Barcode] = line
 	c.cartLines = append(c.cartLines, line)
-	c.setStatus("Added " + line.Name)
 	c.refreshReceiptUI()
 }
 
@@ -321,58 +162,4 @@ func (c *CheckoutView) refreshReceiptUI() {
 	if c.receipt != nil {
 		c.receipt.Refresh()
 	}
-}
-
-func (c *CheckoutView) setStatus(message string) {
-	if c.status != nil {
-		c.status.SetText(message)
-	}
-}
-
-func (c *CheckoutView) applyQuantity(line *CartLine, desired int) {
-	if line.Stock == 0 {
-		c.setStatus("Out of stock: " + line.Name)
-		return
-	}
-	target := desired
-	if target < 1 {
-		target = 1
-		if line.Qty == 1 {
-			c.setStatus("Min qty is 1: " + line.Name)
-			return
-		}
-	}
-	if target > line.Stock {
-		target = line.Stock
-		if line.Qty == line.Stock {
-			c.setStatus("Max stock reached: " + line.Name)
-			return
-		}
-	}
-	if target == line.Qty {
-		return
-	}
-	if target > line.Qty {
-		c.setStatus("Added " + line.Name)
-	}
-	line.Qty = target
-	c.refreshReceiptUI()
-}
-
-func (c *CheckoutView) withUI(action func()) {
-	app := fyne.CurrentApp()
-	if app == nil {
-		action()
-		return
-	}
-	app.Driver().RunOnMain(action)
-}
-
-func (c *CheckoutView) FocusSearch() {
-	if c.search == nil {
-		return
-	}
-	c.withUI(func() {
-		c.search.Focus()
-	})
 }

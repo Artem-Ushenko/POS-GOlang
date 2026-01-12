@@ -1,10 +1,6 @@
 package store
 
-import (
-	"database/sql"
-
-	_ "modernc.org/sqlite"
-)
+import "database/sql"
 
 func OpenDB(path string) (*sql.DB, error) {
 	return sql.Open("sqlite", path)
@@ -17,19 +13,18 @@ func Migrate(db *sql.DB) error {
 
 	statements := []string{
 		`CREATE TABLE IF NOT EXISTS customers (
-				id INTEGER PRIMARY KEY,
-				name TEXT NOT NULL,
-				email TEXT NOT NULL,
-				phone TEXT NOT NULL
-			);`,
+			id INTEGER PRIMARY KEY,
+			name TEXT NOT NULL,
+			email TEXT NOT NULL,
+			phone TEXT NOT NULL
+		);`,
 		`CREATE TABLE IF NOT EXISTS products (
-				id INTEGER PRIMARY KEY,
-				name TEXT NOT NULL,
-				barcode TEXT,
-				quantity INTEGER NOT NULL,
-				purchase_price REAL NOT NULL,
-				price REAL NOT NULL
-			);`,
+			id INTEGER PRIMARY KEY,
+			name TEXT NOT NULL,
+			barcode TEXT,
+			price REAL NOT NULL,
+			stock INTEGER NOT NULL
+		);`,
 		`CREATE TABLE IF NOT EXISTS sales (
 			id INTEGER PRIMARY KEY,
 			customer_id INTEGER NOT NULL,
@@ -60,24 +55,6 @@ func Migrate(db *sql.DB) error {
 	}
 	if !hasBarcode {
 		if _, err := db.Exec(`ALTER TABLE products ADD COLUMN barcode TEXT`); err != nil {
-			return err
-		}
-	}
-	hasQuantity, err := columnExists(db, "products", "quantity")
-	if err != nil {
-		return err
-	}
-	if !hasQuantity {
-		if _, err := db.Exec(`ALTER TABLE products ADD COLUMN quantity INTEGER NOT NULL DEFAULT 0`); err != nil {
-			return err
-		}
-	}
-	hasPurchasePrice, err := columnExists(db, "products", "purchase_price")
-	if err != nil {
-		return err
-	}
-	if !hasPurchasePrice {
-		if _, err := db.Exec(`ALTER TABLE products ADD COLUMN purchase_price REAL NOT NULL DEFAULT 0`); err != nil {
 			return err
 		}
 	}

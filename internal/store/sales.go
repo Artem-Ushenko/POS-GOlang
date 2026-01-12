@@ -32,20 +32,20 @@ func CreateSale(db *sql.DB, customerID *int64, items []SaleItem) (int64, error) 
 		}
 
 		var price float64
-		var quantity int64
+		var stock int64
 		err := tx.QueryRow(
-			`SELECT price, quantity FROM products WHERE id = ?`,
+			`SELECT price, stock FROM products WHERE id = ?`,
 			item.ProductID,
-		).Scan(&price, &quantity)
+		).Scan(&price, &stock)
 		if err != nil {
 			return 0, err
 		}
-		if quantity < item.Quantity {
+		if stock < item.Quantity {
 			return 0, fmt.Errorf("%w for product %d", ErrInsufficientStock, item.ProductID)
 		}
 
 		result, err := tx.Exec(
-			`UPDATE products SET quantity = quantity - ? WHERE id = ? AND quantity >= ?`,
+			`UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?`,
 			item.Quantity,
 			item.ProductID,
 			item.Quantity,
