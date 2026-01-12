@@ -42,13 +42,16 @@ func main() {
 	checkoutView := ui.NewCheckoutTab(db, window, scanner)
 	salesView := ui.NewSalesTab(db, window)
 	productsView := ui.NewProductsTab(db)
+	salesActive := false
 	checkoutActive := false
 	scanner.OnScan(func(barcode string) {
-		fyne.CurrentApp().Driver().RunOnMain(func() {
-			if checkoutActive {
-				checkoutView.HandleScan(barcode)
-			}
-		})
+		if checkoutActive {
+			checkoutView.HandleScan(barcode)
+			return
+		}
+		if salesActive {
+			salesView.HandleScan(barcode)
+		}
 	})
 	scanner.Start(window)
 	defer scanner.Stop()
@@ -60,12 +63,11 @@ func main() {
 		salesView.Tab,
 	)
 	tabs.OnSelected = func(item *container.TabItem) {
+		salesActive = item == salesView.Tab
 		checkoutActive = item == checkoutView.Tab
 		checkoutView.SetActive(checkoutActive)
-		if checkoutActive {
-			checkoutView.FocusSearch()
-		}
 	}
+	salesActive = tabs.Selected() == salesView.Tab
 	checkoutActive = tabs.Selected() == checkoutView.Tab
 	checkoutView.SetActive(checkoutActive)
 
@@ -77,24 +79,15 @@ func main() {
 		go func() {
 			path, err := backup.BackupDatabase("pos.db", "backups")
 			if err != nil {
-				fyne.CurrentApp().Driver().RunOnMain(func() {
-					dialog.NewError(err, window).Show()
-				})
+				dialog.NewError(err, window).Show()
 				return
 			}
-			fyne.CurrentApp().Driver().RunOnMain(func() {
-				dialog.NewInformation("Backup Complete", "Backup saved to "+path, window).Show()
-			})
+			dialog.NewInformation("Backup Complete", "Backup saved to "+path, window).Show()
 		}()
 	})
 
 	content := container.NewBorder(backupButton, nil, nil, nil, tabs)
 	window.SetContent(container.NewMax(content, scanner.Widget()))
-	fyne.CurrentApp().Driver().RunOnMain(func() {
-		if checkoutActive {
-			checkoutView.FocusSearch()
-		}
-	})
 	window.Resize(fyne.NewSize(900, 600))
 	window.ShowAndRun()
 }

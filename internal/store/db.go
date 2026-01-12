@@ -1,10 +1,6 @@
 package store
 
-import (
-	"database/sql"
-
-	_ "modernc.org/sqlite"
-)
+import "database/sql"
 
 func OpenDB(path string) (*sql.DB, error) {
 	return sql.Open("sqlite", path)

@@ -63,34 +63,3 @@ func GetProductByBarcode(db *sql.DB, barcode string) (Product, error) {
 	).Scan(&product.ID, &product.Name, &product.Barcode, &product.Price, &product.Stock)
 	return product, err
 }
-
-func SearchProducts(db *sql.DB, query string, limit int) ([]Product, error) {
-	if limit <= 0 {
-		limit = 20
-	}
-	likeQuery := "%" + query + "%"
-	rows, err := db.Query(
-		`SELECT id, name, barcode, price, stock FROM products WHERE name LIKE ? OR barcode LIKE ? ORDER BY name LIMIT ?`,
-		likeQuery,
-		likeQuery,
-		limit,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var products []Product
-	for rows.Next() {
-		var product Product
-		if err := rows.Scan(&product.ID, &product.Name, &product.Barcode, &product.Price, &product.Stock); err != nil {
-			return nil, err
-		}
-		products = append(products, product)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return products, nil
-}
