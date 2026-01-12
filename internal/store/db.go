@@ -2,7 +2,6 @@ package store
 
 import (
 	"database/sql"
-
 	_ "modernc.org/sqlite"
 )
 
@@ -17,18 +16,18 @@ func Migrate(db *sql.DB) error {
 
 	statements := []string{
 		`CREATE TABLE IF NOT EXISTS customers (
-				id INTEGER PRIMARY KEY,
-				name TEXT NOT NULL,
-				email TEXT NOT NULL,
-				phone TEXT NOT NULL
-			);`,
+			id INTEGER PRIMARY KEY,
+			name TEXT NOT NULL,
+			email TEXT NOT NULL,
+			phone TEXT NOT NULL
+		);`,
 		`CREATE TABLE IF NOT EXISTS products (
-					id INTEGER PRIMARY KEY,
-					name TEXT NOT NULL,
-					barcode TEXT,
-					price REAL NOT NULL,
-					stock INTEGER NOT NULL
-				);`,
+			id INTEGER PRIMARY KEY,
+			name TEXT NOT NULL,
+			barcode TEXT,
+			price REAL NOT NULL,
+			stock INTEGER NOT NULL
+		);`,
 		`CREATE TABLE IF NOT EXISTS sales (
 			id INTEGER PRIMARY KEY,
 			customer_id INTEGER NOT NULL,
@@ -59,15 +58,6 @@ func Migrate(db *sql.DB) error {
 	}
 	if !hasBarcode {
 		if _, err := db.Exec(`ALTER TABLE products ADD COLUMN barcode TEXT`); err != nil {
-			return err
-		}
-	}
-	hasStock, err := columnExists(db, "products", "stock")
-	if err != nil {
-		return err
-	}
-	if !hasStock {
-		if _, err := db.Exec(`ALTER TABLE products ADD COLUMN stock INTEGER NOT NULL DEFAULT 0`); err != nil {
 			return err
 		}
 	}

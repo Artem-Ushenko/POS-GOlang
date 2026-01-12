@@ -3,3 +3,4 @@ pos.db
 *.db-wal
 *.db-shm
 backups/
+pos-gui.exe

@@ -9,12 +9,11 @@ import (
 )
 
 type ScannerService struct {
-	entry            *widget.Entry
-	onScan           func(string)
-	mu               sync.RWMutex
-	focusLockEnabled bool
-	stopOnce         sync.Once
-	stopCh           chan struct{}
+	entry    *widget.Entry
+	onScan   func(string)
+	mu       sync.RWMutex
+	stopOnce sync.Once
+	stopCh   chan struct{}
 }
 
 func NewScannerService() *ScannerService {
@@ -23,9 +22,8 @@ func NewScannerService() *ScannerService {
 	entry.Hide()
 
 	scanner := &ScannerService{
-		entry:            entry,
-		focusLockEnabled: true,
-		stopCh:           make(chan struct{}),
+		entry:  entry,
+		stopCh: make(chan struct{}),
 	}
 
 	entry.OnSubmitted = func(value string) {
@@ -61,12 +59,6 @@ func (s *ScannerService) Start(window fyne.Window) {
 		for {
 			select {
 			case <-ticker.C:
-				s.mu.RLock()
-				enabled := s.focusLockEnabled
-				s.mu.RUnlock()
-				if !enabled {
-					continue
-				}
 				if canvas.Focused() != s.entry {
 					canvas.Focus(s.entry)
 				}
@@ -81,10 +73,4 @@ func (s *ScannerService) Stop() {
 	s.stopOnce.Do(func() {
 		close(s.stopCh)
 	})
-}
-
-func (s *ScannerService) SetFocusLockEnabled(enabled bool) {
-	s.mu.Lock()
-	s.focusLockEnabled = enabled
-	s.mu.Unlock()
 }
