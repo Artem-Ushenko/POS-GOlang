@@ -93,21 +93,16 @@ func NewCheckoutTab(db *sql.DB, window fyne.Window, scanner *ScannerService) *Ch
 
 	view.totalLabel = widget.NewLabel("Total: 0.00")
 
-	addTestButton := widget.NewButton("Add test item", func() {
-		view.addOrIncrement(&CartLine{
-			ProductID: 1,
-			Name:      "Test Item",
-			Barcode:   "TEST-0001",
-			UnitPrice: 3.50,
-			Qty:       1,
-			Stock:     3,
-		})
-	})
-
 	leftPane := container.NewBorder(nil, view.totalLabel, nil, nil, view.receipt)
+
 	searchPlaceholder := widget.NewLabel("Scan or search products here.")
 	resultsPlaceholder := widget.NewLabel("Search results will appear here.")
-	rightPane := container.NewVBox(searchPlaceholder, resultsPlaceholder, addTestButton, layout.NewSpacer())
+
+	rightPane := container.NewVBox(
+		searchPlaceholder,
+		resultsPlaceholder,
+		layout.NewSpacer(),
+	)
 
 	content := container.NewHSplit(leftPane, rightPane)
 	content.SetOffset(0.55)
